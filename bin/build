@@ -82,7 +82,7 @@ else
 
   topic "Updating apt caches"
   # Ignore stderr from apt-get update containing: rm: cannot remove '/var/cache/apt/archives/partial/*.deb': Permission denied
-  apt-get $APT_OPTIONS update 2> >(grep -v "rm: cannot remove") | indent
+  apt-get $APT_OPTIONS update 2> >(grep -v "cannot remove") | indent
 
   for PACKAGE in $(cat Aptfile | grep -v -s -e '^#' | grep -v -s -e "^:repo:"); do
     if [[ $PACKAGE == *deb ]]; then
@@ -98,7 +98,7 @@ else
   done
 
   topic "Installing apt packages with dpkg"
-  for DEB in $(ls -1 $APT_CACHE_DIR/archives/*.deb); do
+  for DEB in $(ls $APT_CACHE_DIR/archives/*.deb 2>/dev/null); do
     echo "$(basename $DEB)" | indent
     dpkg -x $DEB $apt_layer/
   done
