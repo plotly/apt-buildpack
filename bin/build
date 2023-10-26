@@ -90,10 +90,10 @@ else
       PACKAGE_FILE=$APT_CACHE_DIR/archives/$PACKAGE_NAME.deb
 
       topic "Fetching $PACKAGE"
-      curl --silent --show-error --fail -L -z $PACKAGE_FILE -o $PACKAGE_FILE $PACKAGE 2>&1 | indent
+      CMD=$(curl --silent --show-error --fail -L -z $PACKAGE_FILE -o $PACKAGE_FILE $PACKAGE 2>&1) && indent "$CMD" || error "$CMD"
     else
       topic "Fetching .debs for $PACKAGE"
-      apt-get $APT_OPTIONS -y $APT_FORCE_YES -d install --reinstall $PACKAGE | indent
+      CMD=$(apt-get $APT_OPTIONS -y $APT_FORCE_YES -d install --reinstall $PACKAGE 2>&1) && indent "$CMD" || error "$CMD"
     fi
   done
 
