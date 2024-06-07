@@ -6,6 +6,11 @@ This is a [Cloud Native Buildpack](https://buildpacks.io/) that adds support for
 
 This buildpack is based on the [heroku-buildpack-apt](https://github.com/heroku/heroku-buildpack-apt)
 
+<div align="center">
+  <a href="https://dash.plotly.com/project-maintenance">
+    <img src="https://dash.plotly.com/assets/images/maintained-by-community.png" width="400px" alt="Maintained by the Plotly Community">
+  </a>
+</div>
 
 ## Usage
 
