@@ -25,13 +25,12 @@ function indent() {
   esac
 }
 
-layers_dir="$1"
-env_dir="$2/env"
-plan_path="$3"
+layers_dir="$CNB_LAYERS_DIR"
+env_dir="$CNB_PLATFORM_DIR/env"
 
 if compgen -G "${env_dir}/*" > /dev/null; then
-  for var in ${env_dir}/*; do
-    declare "$(basename ${var})=$(<${var})"
+  for var in "${env_dir}"/*; do
+    declare "$(basename "${var}")=$(<"${var}")"
   done
 fi
 
@@ -103,59 +102,77 @@ else
     dpkg -x $DEB $apt_layer/
   done
 
-  topic "Writing profile script and environment variables"
-  exports_path=$apt_layer/.profile.d/000_apt.sh
-  mkdir -p $apt_layer/.profile.d
-  touch $exports_path
+  topic "Writing exec.d script and environment variables"
+
+  exports_path=$apt_layer/exec.d/000_apt.sh
+  mkdir -p "$apt_layer/exec.d"
+  touch "$exports_path"
+  chmod 755 "$exports_path"
+  cat << EOF > "$exports_path"
+#!/usr/bin/env bash
+set -eo pipefail
+
+echo "Loading apt package environment variables"
+
+cat << EOF >&3
+EOF
+
   apt_env_dir=$apt_layer/env
   mkdir -p $apt_env_dir
 
   path="$apt_layer/usr/bin"
   echo "PATH=$path" | indent
-  echo "export PATH=\"$path:\$PATH\"" >> $exports_path
-  echo -n "$path:$PATH" > $apt_env_dir/PATH.prepend
-  echo -n ":" > $apt_env_dir/PATH.delim
+  echo "PATH = \"$path:\$PATH\"" >> "$exports_path"
+  echo -n "$path:$PATH" > "$apt_env_dir/PATH.prepend"
+  echo -n ":" > "$apt_env_dir/PATH.delim"
 
   ld_library_path=$apt_layer/lib/x86_64-linux-gnu:$apt_layer/lib/i386-linux-gnu:$apt_layer/lib:$apt_layer/usr/lib/x86_64-linux-gnu:$apt_layer/usr/lib/i386-linux-gnu:$apt_layer/usr/lib
   echo "LD_LIBRARY_PATH=$ld_library_path" | indent
-  echo "export LD_LIBRARY_PATH=\"$ld_library_path:\$LD_LIBRARY_PATH\"" >> $exports_path
-  echo -n "$ld_library_path" > $apt_env_dir/LD_LIBRARY_PATH.prepend
-  echo -n ":" > $apt_env_dir/LD_LIBRARY_PATH.delim
+  echo "LD_LIBRARY_PATH = \"$ld_library_path:\$LD_LIBRARY_PATH\"" >> "$exports_path"
+  echo -n "$ld_library_path" > "$apt_env_dir/LD_LIBRARY_PATH.prepend"
+  echo -n ":" > "$apt_env_dir/LD_LIBRARY_PATH.delim"
 
   library_path=$ld_library_path
   echo "LIBRARY_PATH=$library_path" | indent
-  echo "export LIBRARY_PATH=\"$library_path:\$LIBRARY_PATH\"" >> $exports_path
-  echo -n "$library_path" > $apt_env_dir/LIBRARY_PATH.prepend
-  echo -n ":" > $apt_env_dir/LIBRARY_PATH.delim
+  echo "LIBRARY_PATH = \"$library_path:\$LIBRARY_PATH\"" >> "$exports_path"
+  echo -n "$library_path" > "$apt_env_dir/LIBRARY_PATH.prepend"
+  echo -n ":" > "$apt_env_dir/LIBRARY_PATH.delim"
 
   include_path=$apt_layer/usr/include:$apt_layer/usr/include/x86_64-linux-gnu
   echo "INCLUDE_PATH=$include_path" | indent
-  echo "export INCLUDE_PATH=\"$include_path:\$INCLUDE_PATH\"" >> $exports_path
-  echo -n "$include_path" > $apt_env_dir/INCLUDE_PATH.prepend
-  echo -n ":" > $apt_env_dir/INCLUDE_PATH.delim
+  echo "INCLUDE_PATH = \"$include_path:\$INCLUDE_PATH\"" >> "$exports_path"
+  echo -n "$include_path" > "$apt_env_dir/INCLUDE_PATH.prepend"
+  echo -n ":" > "$apt_env_dir/INCLUDE_PATH.delim"
 
   cpath="\$INCLUDE_PATH"
   echo "CPATH=$cpath" | indent
-  echo "export CPATH=\"$cpath\"" >> $exports_path
+  echo "CPATH = \"$cpath\"" >> "$exports_path"
   cp "$apt_env_dir"/INCLUDE_PATH.prepend "$apt_env_dir"/CPATH.prepend
-  echo -n ":" > $apt_env_dir/CPATH.delim
+  echo -n ":" > "$apt_env_dir/CPATH.delim"
 
   cpppath="\$INCLUDE_PATH"
   echo "CPPPATH=$cpppath" | indent
-  echo "export CPPPATH=\"$cpppath\"" >> $exports_path
+  echo "CPPPATH = \"$cpppath\"" >> "$exports_path"
   cp "$apt_env_dir"/INCLUDE_PATH.prepend "$apt_env_dir"/CPPPATH.prepend
-  echo -n ":" > $apt_env_dir/CPPPATH.delim
+  echo -n ":" > "$apt_env_dir/CPPPATH.delim"
 
   pkg_config_path=$apt_layer/usr/lib/x86_64-linux-gnu/pkgconfig:$apt_layer/usr/lib/i386-linux-gnu/pkgconfig:$apt_layer/usr/lib/pkgconfig
   echo "PKG_CONFIG_PATH=$pkg_config_path" | indent
-  echo "export PKG_CONFIG_PATH=\"$pkg_config_path:\$PKG_CONFIG_PATH\"" >> $exports_path
-  echo -n "$pkg_config_path" > $apt_env_dir/PKG_CONFIG_PATH.prepend
-  echo -n ":" > $apt_env_dir/PKG_CONFIG_PATH.delim
+  echo "PKG_CONFIG_PATH = \"$pkg_config_path:\$PKG_CONFIG_PATH\"" >> "$exports_path"
+  echo -n "$pkg_config_path" > "$apt_env_dir/PKG_CONFIG_PATH.prepend"
+  echo -n ":" > "$apt_env_dir/PKG_CONFIG_PATH.delim"
+
+  echo 'EOF' >> "$exports_path"
+  echo '' >> "$exports_path"
 fi
 
-echo "launch = true" > ${apt_layer}.toml
-echo "build = true" >> ${apt_layer}.toml
-echo "cache = true" >> ${apt_layer}.toml
+# write layer toml file
+cat << EOF > "${apt_layer}.toml"
+[types]
+  launch = true
+  build = true
+  cache = true
+EOF
 
 end_time=$(date +%s%N)
-echo "Elapsed time: $(( $(( $end_time - $start_time )) / 1000000 ))ms" | indent
+echo "Elapsed time: $(( $(( end_time - start_time )) / 1000000 ))ms" | indent
